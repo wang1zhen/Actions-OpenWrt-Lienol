@@ -78,6 +78,10 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
+        
+    - name: Load custom zzz-default-settings
+      run: |
+        mv zzz-default-settings openwrt/package/default-settings/files/zzz-default-settings
 
     - name: Download package
       id: package
