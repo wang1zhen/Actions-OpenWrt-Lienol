@@ -1,0 +1,88 @@
+#!/bin/sh
+
+touch /etc/crontabs/root
+
+uci set luci.main.lang=zh_cn
+#设置默认主题
+uci set luci.main.mediaurlbase=/luci-static/argon
+uci commit luci
+
+uci set system.@system[0].timezone=CST-8
+uci set system.@system[0].zonename=Asia/Shanghai
+uci commit system
+
+uci set fstab.@global[0].anon_mount=1
+uci commit fstab
+
+ln -sf /sbin/ip /usr/bin/ip
+
+sed -i '/lienol/d' /etc/opkg/distfeeds.conf
+sed -i '/other/d' /etc/opkg/distfeeds.conf
+#sed -i 's/downloads.openwrt.org/openwrt.proxy.ustclug.org/g' /etc/opkg/distfeeds.conf
+#sed -i 's/http/https/g' /etc/opkg/distfeeds.conf
+sed -i "s/# //g" /etc/opkg/distfeeds.conf
+
+#设置root密码
+sed -i 's/root::0:0:99999:7:::/root:$1$CbnYV8xV$JWPuEYN.C0EC8JK5Ccnuv.:0:0:99999:7:::/g' /etc/shadow
+
+#uci set dhcp.lan.ra='server'
+#uci set dhcp.lan.dhcpv6='server'
+#uci set dhcp.lan.ra_management='1'
+#uci set dhcp.lan.ra_default='1'
+#uci set dhcp.@dnsmasq[0].localservice=0
+#uci set dhcp.@dnsmasq[0].nonwildcard=0
+uci delete dhcp.lan.ra
+uci delete dhcp.lan.dhcpv6
+uci delete dhcp.lan.ndp
+uci commit dhcp
+
+#设置默认ip地址
+uci delete network.lan
+uci set network.lan=interface
+uci set network.lan.device='br-lan'
+uci set network.lan.proto='dhcp'
+uci delete network.@device[0].ports
+uci add_list network.@device[0].ports='eth0'
+uci add_list network.@device[0].ports='eth1'
+uci add_list network.@device[0].ports='eth2'
+uci add_list network.@device[0].ports='eth3'
+uci delete network.wan
+uci delete network.wan6
+uci commit network
+
+#设置web管理端口
+uci delete uhttpd.main.listen_http
+uci delete uhttpd.main.listen_https
+uci add_list uhttpd.main.listen_http='0.0.0.0:8888'
+uci add_list uhttpd.main.listen_http='[::]:8888'
+uci commit uhttpd
+
+sed -i '/option disabled/d' /etc/config/wireless
+sed -i '/set wireless.radio${devidx}.disabled/d' /lib/wifi/mac80211.sh
+wifi up
+
+sed -i '/DISTRIB_DESCRIPTION/d' /etc/openwrt_release
+echo "DISTRIB_DESCRIPTION='OpenWrt 21.02-SNAPSHOT'" >> /etc/openwrt_release
+
+# 删除状态页不需显示的
+rm -rf /usr/lib/lua/luci/view/admin_status/index
+#mv -f /usr/lib/lua/luci/view/admin_status/index /usr/lib/lua/luci/view/admin_status/index_backup 2>/dev/null
+
+sed -i 's#openwrt/luci#lienol/openwrt-luci#g' /usr/lib/lua/luci/view/themes/*/footer.htm
+
+#禁用某些可能会自启动且用不上的依赖包服务
+/etc/init.d/php7-fastcgi disable 2>/dev/null
+/etc/init.d/php7-fpm disable 2>/dev/null
+/etc/init.d/php8-fastcgi disable 2>/dev/null
+/etc/init.d/php8-fpm disable 2>/dev/null
+/etc/init.d/softethervpnbridge disable 2>/dev/null
+/etc/init.d/softethervpnserver disable 2>/dev/null
+/etc/init.d/softethervpnclient disable 2>/dev/null
+/etc/init.d/haproxy disable 2>/dev/null
+/etc/init.d/kcptun disable 2>/dev/null
+
+chmod 0755 /etc/init.d/*
+
+rm -rf /tmp/luci-*cache
+
+exit 0
