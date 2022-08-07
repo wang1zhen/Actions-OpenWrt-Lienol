@@ -10,7 +10,10 @@
 
 name: Build OpenWrt
 
-on: push
+on:
+  push:
+  schedule:
+    - cron: 7 7 * * 0,4
 
 env:
   REPO_URL: https://github.com/Lienol/openwrt
